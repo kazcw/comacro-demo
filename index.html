@@ -1,10 +1,157 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>Hello wasm-pack!</title>
-  </head>
-  <body>
-    <script src="./bootstrap.js"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>Declarative static analysis in Rust</h2>
+
+<p>
+Rust's <a href="https://github.com/rust-lang/rust/pull/40847">Macros 2.0</a>
+are intuitive: define a pattern by example, and the compiler can insert the
+pattern into your program wherever you want it. Inspired by this
+self-explanatory syntax, I set out to explore the question: What if you could
+&ldquo;run a macro backwards&rdquo;&mdash;use the same language to describe
+<em>patterns to search for</em>? To experiment with this possibility, I have
+built a prototype library called <code>comacro</code>. Compared to imperatively
+examining syntax, using <code>comacro</code> is shorter and more obvious;
+<code>comacro</code> patterns can also implemented efficiently when searching
+for many patterns simultaneously.
+</p>
+
+<div class="code" style="border: 2px solid black; padding: 8px;">
+macro pattern1(<div id="args" class="code editable" style="display: inline-block;" contenteditable="true">$x:expr, $y:expr</div>) {
+<pre id="body" class="editable" contenteditable="true" style="margin-left: 2em; padding: 4px; margin-top: 2px;">let temp = $x;
+$x = $y;
+$y = temp;</pre>
+}
+</div>
+<pre id="errs" class="errs" style="margin-left: 2em; padding: 4px; margin-top: 2px; display: none;"></pre>
+
+<h3>&#x2193;Parse&#x2193;</h3>
+
+<div id="trees"></div>
+<!--
+<table>
+    <tr id="trees">
+        <td>
+        <table class="tree">
+            <tr><td colspan="2" class="left top right">LOCAL</td></tr>
+            <tr><td class="left half">PAT</td><td class="left right bottom half">$2</td></tr>
+            <tr><td class="left bottom half">$1</td><td class="left empty half"></td></tr>
+        </table>
+        </td>
+        <td>
+        <table class="tree">
+            <tr><td colspan="2" class="left top right">SEMI</td></tr>
+            <tr><td colspan="2" class="left right">ASSIGN</td></tr>
+            <tr><td class="left bottom half">$2</td><td class="left right bottom half">$3</td></tr>
+        </table>
+        </td>
+        <td>
+        <table class="tree">
+            <tr><td colspan="2" class="left top right">SEMI</td></tr>
+            <tr><td colspan="2" class="left right">ASSIGN</td></tr>
+            <tr><td class="left bottom half">$3</td><td class="left right half">PAT</td></tr>
+            <tr><td class="empty half"></td><td class="left right bottom half">$1</td></tr>
+        </table>
+        </td>
+        <td style="padding-left: 1em;">
+        Parse to an AST extended with a node type for each macro metavar type
+        (<code>$expr</code>, <code>$ident</code>, etc).
+        </td>
+    </tr>
+</table>
+-->
+
+<h3>&#x2193;Serialize&#x2193;</h3>
+
+<table><tr>
+<td>
+<pre class="code" id="ser">
+LOCAL{ PAT{ <div class="match">$1</div> } <div class="match">$2</div> }
+SEMI{ ASSIGN{ <div class="match">$2</div> <div class="match">$3</div> } }
+SEMI{ ASSIGN{ <div class="match">$3</div> PAT{ <div class="match">$1</div> } } }
+</pre>
+</td>
+<td style="padding-left: 1em;">Visit the AST depth first, producing a compact linear format suitable for regex-matching.</td>
+</tr></table>
+
+<!--
+<h3>&#x2193;Match&#x2193;</h3>
+
+<table class="code matches">
+<tr>
+    <td rowspan="2">LOCAL{</td>
+    <td rowspan="2">PAT{</td>
+    <td>$1</td>
+    <td rowspan="2">}</td>
+    <td>$2</td>
+    <td rowspan="2">}</td>
+</tr>
+<tr>
+    <td style="background-color: lightgreen;">I"baz"</td>
+    <td style="background-color: lightgreen;">PAT{ I"foo" }</td>
+</tr>
+</table>
+
+<table class="code matches">
+<tr>
+    <td rowspan="2">SEMI{</td>
+    <td rowspan="2">ASSIGN{</td>
+    <td>$2</td>
+    <td>$3</td>
+    <td rowspan="2">}</td>
+    <td rowspan="2">}</td>
+</tr>
+<tr>
+    <td style="background-color: lightgreen;">PAT{ I"foo" }</td>
+    <td style="background-color: lightgreen;">PAT{ I"bar" }</td>
+</tr>
+</table>
+
+<table class="code matches">
+<tr>
+    <td rowspan="2">SEMI{</td>
+    <td rowspan="2">ASSIGN{</td>
+    <td>$3</td>
+    <td rowspan="2">$PAT{</td>
+    <td>$1</td>
+    <td rowspan="2">}</td>
+    <td rowspan="2">}</td>
+    <td rowspan="2">}</td>
+</tr>
+<tr>
+    <td style="background-color: lightgreen;">PAT{ I"bar" }</td>
+    <td style="background-color: lightgreen;">I"baz"</td>
+</tr>
+</table>
+-->
+
+<h3>&#x2193;Match&#x2193;</h3>
+
+<pre class="code">
+<div style="background-color: pink;">LOCAL{ PAT{ I"foo" } LIT{ N42 } }
+LOCAL{ PAT{ I"bar" } LIT{ N23 } }</div><div style="background-color: lightgreen;">LOCAL{ PAT{ <div class="match">I"baz"</div> } <div class="match">PAT{ I"foo" }</div> }
+SEMI{ ASSIGN{ <div class="match">PAT{ I"foo" }</div> <div class="match">PAT{ I"bar" }</div> } }
+SEMI{ ASSIGN{ <div class="match">PAT{ I"bar" }</div> PAT{ <div class="match">I"baz"</div> } } }</div>
+</pre>
+
+<h3>&#x2191;Parse + Serialize + Match&#x2191;</h3>
+
+<div class="code" style="border: 2px solid black; padding: 8px;">
+fn code_to_search() {
+<pre class="editable" contenteditable="true" style="margin-left: 2em; padding: 4px;">let mut foo = 42;
+let mut bar = 23;
+let baz = foo;
+foo = bar;
+bar = baz;</pre>
+}
+</div>
+
+<script src="./bootstrap.js"></script>
+</body>
 </html>
+
