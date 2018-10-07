@@ -1,2 +1,5 @@
 node_modules
 dist
+rust-comacro/target
+**/*.rs.bk
+rust-comacro/Cargo.lock
