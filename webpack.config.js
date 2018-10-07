@@ -7,8 +7,12 @@ module.exports = {
     path: path.resolve(__dirname, "dist"),
     filename: "bootstrap.js",
   },
-  mode: "development",
+  mode: "production",
+  optimization: {
+    // why does build break without this?
+    sideEffects: false
+  },
   plugins: [
-    new CopyWebpackPlugin(['index.html'])
+    new CopyWebpackPlugin(['index.html', 'map_flatten.html', 'replace_none.html', 'useless_collect.html', 'style.css'])
   ],
 };

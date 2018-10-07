@@ -59,21 +59,21 @@ Without JavaScript, the example links will show pre-rendered output.
 <div><em>Or edit the yellow-highlighted text to write your own.</em></div>
 </p>
 
-<div class="code" style="border: 2px solid black; padding: 8px;">macro pattern1(<div id="args" class="code editable" style="display: inline-block;" contenteditable="true">$t:ident, $x:expr, $y:expr</div>) {<pre id="body" class="editable" contenteditable="true" style="margin-left: 2em; padding: 4px; margin-top: 2px;">let $t = $x;<br>$x = $y;<br>$y = $t;</pre>}</div>
+<div class="code" style="border: 2px solid black; padding: 8px;">macro pattern1(<div id="args" class="code editable" style="display: inline-block;" contenteditable="true">$x:expr</div>) {<pre id="body" class="editable" style="margin-left: 2em; padding: 4px; margin-top: 2px;" contenteditable="true">mem::replace($x, None)</pre>}</div>
 
 <pre id="pat_errs" class="errs"></pre>
 
 <h3>&#x2193;Parse&#x2193;</h3>
 
-<div id="trees"><table class="tree"><tbody><tr><td colspan="6" style="width: 24em;" class="treecell occupied">StmtSeq</td></tr><tr><td colspan="2" style="width: 8em;" class="treecell occupied">Local</td><td colspan="2" style="width: 8em;" class="treecell occupied">Semi</td><td colspan="2" style="width: 8em;" class="treecell occupied">Semi</td></tr><tr><td colspan="1" style="width: 4em;" class="treecell occupied">Ident</td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$2</td><td colspan="2" style="width: 8em;" class="treecell occupied">Assign</td><td colspan="2" style="width: 8em;" class="treecell occupied">Assign</td></tr><tr><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$1</td><td colspan="1" style="width: 4em;" class="treecell" rowspan="1"></td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$2</td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$3</td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$3</td><td colspan="1" style="width: 4em;" class="treecell occupied">Path</td></tr><tr><td colspan="5" style="width: 20em;" class="treecell" rowspan="1"></td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$1</td></tr></tbody></table></div>
+<div id="trees"><table class="tree"><tbody><tr><td colspan="4" style="width: 16em;" class="treecell occupied">Call</td></tr><tr><td colspan="2" style="width: 8em;" class="treecell occupied">Path</td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$1</td><td colspan="1" style="width: 4em;" class="treecell occupied">Path</td></tr><tr><td colspan="1" style="width: 4em;" class="treecell occupied leaf">mem</td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">replace</td><td colspan="1" style="width: 4em;" class="treecell" rowspan="1"></td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">None</td></tr></tbody></table></div>
 
 <h3>&#x2193;Serialize&#x2193;</h3>
 
-<pre class="code" id="ser">Local{ Ident{ $1 } $2 }<br>Semi{ Assign{ $2 $3 } }<br>Semi{ Assign{ $3 Path{ $1 } } }</pre>
+<pre class="code" id="ser">Call{ Path{ mem replace } $1 Path{ None } }</pre>
 
 <h3>&#x2193;Match&#x2193;</h3>
 
-<pre id="matches" class="code">Local{ Ident{ foo } Call{ Path{ Some } Lit{ 23 } } }<br>Local{ Ident{ bar } Call{ Path{ mem replace } Reference{ Path{ foo } } Path{ None } } }<br><span class="block match">Local{ Ident{ Ident{ temp }<sup>1</sup> } Expr{ Path{ foo } }<sup>2</sup> }<br>Semi{ Assign{ Expr{ Path{ foo } }<sup>2</sup> Expr{ Path{ bar } }<sup>3</sup> } }<br>Semi{ Assign{ Expr{ Path{ bar } }<sup>3</sup> Path{ Ident{ temp }<sup>1</sup> } } }</span><br>Local{ Ident{ nothing } Binary{ Binary{ Path{ Vec } Path{ Option } } Call{ Path{ new } } } }<br>Local{ Ident{ nothing } MethodCall{ MethodCall{ Path{ nothing } map Closure{ Ident{ x } Path{ x } } } flatten } }<br>Local{ Ident{ zero } MethodCall{ MethodCall{ Path{ nothing } collect } len } }</pre>
+<pre id="matches" class="code">Local{ Ident{ foo } Call{ Path{ Some } Lit{ 23 } } }<br>Local{ Ident{ bar } <span class="match">Call{ Path{ mem replace } Expr{ Reference{ Path{ foo } } }<sup>1</sup> Path{ None } }</span> }<br>Local{ Ident{ temp } Path{ foo } }<br>Semi{ Assign{ Path{ foo } Path{ bar } } }<br>Semi{ Assign{ Path{ bar } Path{ temp } } }<br>Local{ Ident{ nothing } Binary{ Binary{ Path{ Vec } Path{ Option } } Call{ Path{ new } } } }<br>Local{ Ident{ nothing } MethodCall{ MethodCall{ Path{ nothing } map Closure{ Ident{ x } Path{ x } } } flatten } }<br>Local{ Ident{ zero } MethodCall{ MethodCall{ Path{ nothing } collect } len } }</pre>
 
 <h3>&#x2191;Parse + Serialize + Match&#x2191;</h3>
 

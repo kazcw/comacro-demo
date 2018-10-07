@@ -1,173 +1,229 @@
+'use strict';
+
 import * as comacro from "rust-comacro";
 
-let args = document.getElementById("args");
-let body = document.getElementById("body");
-let errs = document.getElementById("errs");
-let trees = document.getElementById("trees");
-let ser = document.getElementById("ser");
+const args = document.getElementById("args");
+const body = document.getElementById("body");
+const patErrs = document.getElementById("pat_errs");
+const trees = document.getElementById("trees");
+const ser = document.getElementById("ser");
+const input = document.getElementById("inpt");
+const inErrs = document.getElementById("in_errs");
 
-function setError(e) {
+const matches = document.getElementById("matches");
+
+const EXAMPLES = {
+    "manual_swap": { args: "$t:ident, $x:expr, $y:expr", body: "let $t = $x;\n$x = $y;\n$y = $t;" },
+    "map_flatten": { args: "$x:expr, $y:expr", body: "$x.map($y).flatten()" },
+    "replace_none": { args: "$x:expr", body: "mem::replace($x, None)" },
+    "useless_collect": { args: "$x:expr", body: "$x.collect().len()" },
+};
+
+function example() {
+    const ex = EXAMPLES[this.id];
+    args.innerText = ex.args;
+    body.innerText = ex.body;
+    updatePattern();
+    return false;
+}
+
+var pat;
+var ir;
+
+function setError(errs, e) {
     if (e === null) {
         errs.style.display = "none";
     } else {
-        errs.innerText = "oops: " + e;
+        errs.innerText = "error: " + e;
         errs.style.display = "block";
     }
 }
 
+function flat_repr_inner(ast, bindings, inner) {
+    if (!Array.isArray(ast)) {
+        if (inner !== undefined && ast === "$1") {
+            return '<span class="match">' + flat_repr_inner(inner, bindings) + '</span>';
+        }
+        if (bindings !== undefined && ast[0] === "$") {
+            return flat_repr_inner(bindings[ast[1]-1]) + "<sup>" + ast[1] + "</sup>";
+        }
+        return ast;
+    }
+    let children = [ast[0] + "{"];
+    for (var i=1, len=ast.length; i<len; i++)
+        children.push(flat_repr_inner(ast[i], bindings, inner));
+    children.push("}");
+    return children.join(" ");
+}
+
+function flat_repr(ast, inner, bindings) {
+    if (inner !== undefined && ast === "$1") {
+        let flat = [];
+        for (var i=0; i<inner.length; i++)
+            flat.push(flat_repr_inner(inner[i], bindings));
+        return '<span class="block match">' + flat.join("<br>") + '</span>';
+    } else
+        return flat_repr_inner(ast, bindings, inner);
+}
+
+function flat_reprs(asts, inner, bindings) {
+    let flat = [];
+    for (var i=0; i<asts.length; i++)
+        flat.push(flat_repr(asts[i], inner, bindings));
+    return flat.join("<br>");
+}
+
 function updatePattern() {
-    console.timeStamp("start updatePattern");
     var patdef;
     try {
         // get pattern token stream
         patdef = new comacro.PatternDef(args.innerText, body.innerText);
     } catch (e) {
-        setError(e);
+        setError(patErrs, e);
+        ir = null;
         return;
     }
-    setError(null);
-    //updatePatTs(patdef.to_string()); // output token stream
-    console.timeStamp("about to parse");
-    var pat;
+    setError(patErrs, null);
     try {
         // parse pattern
         pat = patdef.parse();
     } catch (e) {
-        setError(e);
+        setError(patErrs, e);
+        ir = null;
         return;
     }
-    console.timeStamp("parsed");
-    setError(null);
-    /*
-    var ir;
+    setError(patErrs, null);
+    let asts = JSON.parse(pat.tree_repr());
+    if (asts.length === 1) {
+        asts = asts[0];
+    } else {
+        asts.unshift("StmtSeq");
+    }
+    const parseTree = makeTree(asts);
+    trees.innerHTML = "";
+    trees.appendChild(parseTree); // output parse tree
+    ser.innerText = pat.flat_repr(); // output serialized form
     try {
         // compile pattern
         ir = pat.compile();
     } catch (e) {
-        setError(e);
+        setError(patErrs, e);
+        ir = null;
         return;
     }
-    setError(null);
-    */
-    console.timeStamp("about to JSON.parse the tree_repr");
-    let asts = JSON.parse(pat.tree_repr());
-    console.timeStamp("did JSON.parse the tree_repr");
-    trees.innerHTML = "";
-    // unified tree
-    asts.unshift("StmtSeq");
-    console.timeStamp("before makeTree");
-    makeTree(asts, trees); // output parse tree
-    console.timeStamp("after makeTree");
-
-    ser.innerText = pat.flat_repr(); // output serialized form
+    setError(patErrs, null);
+    updateInput(); // matches may have changed
 }
 
-function updatePatTs(ts) {
-    patts.innerHTML = "";
-    let stmts = ts.split(";");
-    let re = /[$] ([*@]) /g;
-    for (var i = 0, len = stmts.length-1; i < len; i++) {
-        let x = patts.insertCell(-1);
-        x.innerText = stmts[i].replace(re, "$$$1");
-        x.classList.add("code");
-        x.classList.add("nobr");
-        x.classList.add("bordered");
-    }
+function setInputUnmatched(inp) {
+    let asts = JSON.parse(inp.tree_repr());
+    matches.innerHTML = flat_reprs(asts); // output serialized form
 }
 
-class Node {
-    constructor(root, children) {
-        this.root = root;
-        this.children = children;
+function updateInput() {
+    var inp;
+    try {
+        inp = new comacro.Input(input.innerText);
+    } catch (e) {
+        setError(inErrs, e);
+        return;
     }
+    setError(inErrs, null);
+
+    if (ir === null) {
+        setInputUnmatched(inp);
+        return;
+    }
+
+    var match;
+    try {
+        match = ir.get_match(inp);
+    } catch (e) {
+        setError(inErrs, e);
+        setInputUnmatched(inp);
+        return;
+    }
+    setError(inErrs, null);
+
+    if (match === "") {
+        setInputUnmatched(inp);
+        return;
+    }
+
+    match = JSON.parse(match);
+    let context = match[0];
+    let bindings = match[1];
+    let pat_ast = JSON.parse(pat.tree_repr());
+    if (pat.fragment() !== "StmtSeq") {
+        pat_ast = pat_ast[0];
+    }
+    matches.innerHTML = flat_reprs(context, pat_ast, bindings);
 }
 
-// recursive tranformation: [root, child, ..] => { root: root, children: [..] }
-function unpackTree(node) {
-    if (!Array.isArray(node)) {
-        return new Node(node, []);
-    }
-    let root = node.shift();
-    let children = node;
-    for (var i = 0, len = children.length; i < len; i++) {
-        children[i] = unpackTree(children[i]);
-    }
-    return new Node(root, children);
+function newCell(row, weight) {
+    const cell = row.insertCell(-1);
+    cell.colSpan = weight;
+    cell.style.width = weight * 4 + "em";
+    cell.classList.add("treecell");
+    return cell;
 }
 
-// find height of tallest branch
-function measureTree(node) {
-    let max = 1;
-    let children = node.children;
-    for (var i = 0, len = children.length; i < len; i++) {
-        let n = measureTree(children[i]) + 1;
-        if (n > max) { max = n; }
+function createCell(info, value, weight, r) {
+    // on reaching a new row, make TRs and pad for columns that have been empty
+    // in this row so far
+    const lastRow = info.table.rows.length - 1;
+    for (var i = lastRow; i < r; i++) {
+        info.table.insertRow(-1);
     }
-    return max;
-}
+    if (r > lastRow && info.width) {
+        newCell(info.table.rows[lastRow+1], info.width).rowSpan = r - lastRow;
+    }
 
-// - insert empty nodes as necessary to ensure each node has at least 1 child
-//   down to bottom
-// - mark each node with its weight
-function bonzaiTree(node, height) {
-    if (height == 0) { return 1; }
-    let children = node.children;
-    if (children.length == 0) {
-        children.push(new Node(null, []));
+    const cell = newCell(info.table.rows[r], weight || 1);
+    cell.innerText = value;
+    cell.classList.add("occupied");
+
+    if (!weight) {
+        cell.classList.add("leaf");
+        // empty column down to bottom
+        info.width += 1;
+        let below = info.table.rows.length - 1 - r;
+        if (below > 0) {
+            newCell(info.table.rows[r + 1], 1).rowSpan = below;
+        }
     }
-    let weight = 0;
-    for (var i = 0, len = children.length; i < len; i++) {
-        weight += bonzaiTree(children[i], height - 1);
-    }
-    node.weight = weight;
-    return weight;
 }
 
 function renderTree(info, node, r) {
-    let row = info.table.rows[r];
-    // XXX: if we don't add children to the last row in bonzai
-    if (!row) {
-        return;
+    const children = Array.isArray(node) ? (node.length - 1) : 0;
+    const value = Array.isArray(node) ? node[0] : node;
+    let weight = 0;
+    for (var i = 0; i < children; i++) {
+        weight += renderTree(info, node[1 + i], r + 1);
     }
-    let cell = row.insertCell(-1);
-    cell.colSpan = node.weight;
-    let children = node.children;
-    cell.classList.add("treecell");
-    if (node.root) {
-        cell.innerText = node.root;
-        cell.classList.add("left");
-        cell.classList.add("right");
-        if (r == 0) {
-            cell.classList.add("top");
-        }
-        if (r == info.height - 1 || children.length == 1 && children[0].root === null) {
-            cell.classList.add("bottom");
-        }
-    }
-    for (var i = 0, len = children.length; i < len; i++) {
-        renderTree(info, children[i], r + 1);
-    }
+    createCell(info, value, weight, r);
+    return weight || 1;
 }
 
-function makeTree(ast, node) {
-    let root = unpackTree(ast);
-    let height = measureTree(root);
-    bonzaiTree(root, height);
-
-    let table = document.createElement("TABLE");
+function makeTree(ast) {
+    const table = document.createElement("TABLE");
     table.classList.add("tree");
-    for (var i = 0; i < height; i++) {
-        table.insertRow(-1);
-    }
-    node.appendChild(table);
-    let info = {
-        table: table,
-        height: height,
-        width: node.weight,
-    };
-    renderTree(info, root, 0);
+    renderTree({ table: table, width: 0 }, ast, 0);
+    return table;
 }
+
+updatePattern();
 
 args.oninput = updatePattern;
 body.oninput = updatePattern;
-updatePattern();
+input.oninput = updateInput;
+
+for (var x in EXAMPLES) {
+    if (!EXAMPLES.hasOwnProperty(x))
+        continue;
+    const ex = document.getElementById(x);
+    ex.href = "#";
+    ex.onclick = example;
+    ex.keydown = example;
+}
+

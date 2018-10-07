@@ -1,49 +1,32 @@
 body {
-    min-width: 790px;
+    min-width: 700px;
     width: 40%;
     margin: 2em auto;
 }
-table {
+.tree {
     display: inline-block;
     vertical-align: text-top;
     border-collapse: collapse;
-}
-td {
-    vertical-align: text-top;
-}
-.tree {
+
     text-align: center;
-    /*
-    width: 90%;
+
     table-layout: fixed;
-    */
+    border: 0px solid black;
+    border-top-width: 2px;
 }
 .treecell {
     margin: 0px;
     padding: 8px;
     border: 0px solid black;
-    /*
-    width: 100%;
-    height: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    */
 }
-tr { margin: 0px; padding: 0px; }
-.left {
+.occupied {
     border-left-width: 2px;
-}
-.right {
     border-right-width: 2px;
 }
-.top {
-    border-top-width: 2px;
-}
-.bottom {
+.leaf {
     border-bottom-width: 2px;
-}
-.empty {
-    border: 0;
 }
 .code {
     font-family: monospace;
@@ -68,21 +51,34 @@ div.match {
     border: 2px solid black;
     margin: 2px;
 }
+/*
 .matches td {
     border: 2px solid white;
     border-top-width: 0px;
     border-bottom-width: 0px;
 }
+*/
 .nobr {
     white-space: nowrap;
 }
 h3 {
     margin: 2px;
 }
-.bordered {
-    padding: 8px;
-    border: 2px solid black;
-}
 .errs {
     background-color: red;
+    margin-left: 2em;
+    padding: 16px;
+    margin-top: 2px;
+    display: none;
+    position: absolute;
+}
+.copyleft {
+    display: inline-block;
+    transform: rotate(180deg);
+}
+.match {
+    background-color: #8f8;
+}
+.block {
+    display: inline-block;
 }
