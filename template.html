@@ -19,16 +19,17 @@ language to describe patterns <em>to search for</em>?</p>
 <p>
 Searching by syntax has some interesting uses:
 <ul>
-<li>A mega-lint that searches for code that could be simplified by using any
-    utility function from the standard library.</li>
-<li>A search-by-body IDE integration: if you recognize a pattern in your code
-    and abstract it into a utility function or macro, you'd be able to search
-    for instances of the pattern and replace them with calls to the
-    utility.</li>
+<li>An IDE integration like <a>IntelliJ's Structural Search and Replace</a>,
+    but with more type awareness</li>
+<li>Semantic patching: a library making an API-breaking change could include a
+    patch file that attempts to update the calling code (similar to
+    <a href="http://coccinelle.lip6.fr/">Coccinelle</a> for C)</li>
 <li>Simpler, faster
     <a href="https://github.com/rust-lang-nursery/rust-clippy">Clippy</a> lints.
     <a href="#clippy">More on that below.</a>
     </li>
+<li>A mega-lint that searches for code that could be simplified by using any
+    utility function from the standard library.</li>
 </ul>
 </p>
 
