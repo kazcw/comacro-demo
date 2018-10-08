@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<title>Declarative Rust static analysis</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -59,21 +60,21 @@ Without JavaScript, the example links will show pre-rendered output.
 <div><em>Or edit the yellow-highlighted text to write your own.</em></div>
 </p>
 
-<div class="code" style="border: 2px solid black; padding: 8px;">macro pattern1(<div id="args" class="code editable" style="display: inline-block;" contenteditable="true">$x:expr</div>) {<pre id="body" class="editable" style="margin-left: 2em; padding: 4px; margin-top: 2px;" contenteditable="true">mem::replace($x, None)</pre>}</div>
+<!--CODE-->
 
 <pre id="pat_errs" class="errs"></pre>
 
 <h3>&#x2193;Parse&#x2193;</h3>
 
-<div id="trees"><table class="tree"><tbody><tr><td colspan="4" style="width: 16em;" class="treecell occupied">Call</td></tr><tr><td colspan="2" style="width: 8em;" class="treecell occupied">Path</td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">$1</td><td colspan="1" style="width: 4em;" class="treecell occupied">Path</td></tr><tr><td colspan="1" style="width: 4em;" class="treecell occupied leaf">mem</td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">replace</td><td colspan="1" style="width: 4em;" class="treecell" rowspan="1"></td><td colspan="1" style="width: 4em;" class="treecell occupied leaf">None</td></tr></tbody></table></div>
+<!--TREES-->
 
 <h3>&#x2193;Serialize&#x2193;</h3>
 
-<pre class="code" id="ser">Call{ Path{ mem replace } $1 Path{ None } }</pre>
+<!--SER-->
 
 <h3>&#x2193;Match&#x2193;</h3>
 
-<pre id="matches" class="code">Local{ Ident{ foo } Call{ Path{ Some } Lit{ 23 } } }<br>Local{ Ident{ bar } <span class="match">Call{ Path{ mem replace } Expr{ Reference{ Path{ foo } } }<sup>1</sup> Path{ None } }</span> }<br>Local{ Ident{ temp } Path{ foo } }<br>Semi{ Assign{ Path{ foo } Path{ bar } } }<br>Semi{ Assign{ Path{ bar } Path{ temp } } }<br>Local{ Ident{ nothing } Binary{ Binary{ Path{ Vec } Path{ Option } } Call{ Path{ new } } } }<br>Local{ Ident{ nothing } MethodCall{ MethodCall{ Path{ nothing } map Closure{ Ident{ x } Path{ x } } } flatten } }<br>Local{ Ident{ zero } MethodCall{ MethodCall{ Path{ nothing } collect } len } }</pre>
+<!--MATCHES-->
 
 <h3>&#x2191;Parse + Serialize + Match&#x2191;</h3>
 
